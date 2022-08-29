@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const { User } = require('../database/models');
 const token = require('../token/tokenGenerate');
@@ -43,8 +44,22 @@ const userById = async (req, res) => {
     return res.status(200).json(userId);
 };
 
+async function verifyUser(req) {
+  const { authorization } = req.headers; 
+  const decoded = jwt.decode(authorization);
+    
+ const findId = await User.findOne({ where: { email: decoded.data } });
+ return findId.id;
+}
+
+const deleteMe = async (req, res) => {
+    const findMyId = await verifyUser(req);
+    await User.destroy({ where: { id: findMyId } });
+    return res.status(204).end();
+};
 module.exports = {
     createUser,
     getAllUsers,
     userById,
+    deleteMe,
 };

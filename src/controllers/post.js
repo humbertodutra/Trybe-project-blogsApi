@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { BlogPost, Category, User, PostCategory } = require('../database/models');
+const { Op } = require('sequelize');
 
 const verifyCategory = async (c) => {
     const findCategories = await Category.findAll({
@@ -71,38 +72,83 @@ const getAll = async (req, res) => {
       });
       return res.status(200).json(list);
 };
-// const result = (id) => BlogPost.findOne({
-//     where: { id },
-//     include: [
-//       { model: User, as: 'user', attributes: { exclude: ['password'] } },
-//       { model: Category, as: 'categories', attributes: ['id', 'name'] },
-//     ],
-//   });
+const formatEditPost = async (id) => {
+    const result = await BlogPost.findOne({
+        where: { id },
+        include: [
+          { model: User, as: 'user', attributes: { exclude: ['password'] } },
+          { model: Category, as: 'categories', attributes: ['id', 'name'] },
+        ],
+      });
+      return result;
+    };
 
-// const editPost = async (req, res) => {
-//     const { id } = req.params;
-//     const { title, content } = req.body;
-//     const verify = await verifyUser(req);
+const editPost = async (req, res) => {
+    const { id } = req.params;
+    const { title, content } = req.body;
+    const toVerify = await verifyUser(req);
+
+    const findByUser = await BlogPost.findAll({
+        where: { id, userId: toVerify },
+    });
     
-//     const findUser = await User.findAll({
-//         where: { id: verify } });
+    if (findByUser.length === 0) {
+        return res.status(401).json({ message: 'Unauthorized user' });
+    }
+    if (!title || !content) {
+        return res.status(400).json({ message: 'Some required fields are missing' });
+    }
+    await BlogPost.update(
+        { title, content },
+        { where: { id } },
+    );
+    const result = await formatEditPost(id);
+    return res.status(200).json(result);
+};
 
-//     console.log(`AQUI O USER POW${{ findUser }}`);
-//     if (!title || !content) {
-//         return res.status(400).json({ message: 'Some required fields are missing' });
-//     }
+const deletePost = async (req, res) => {
+    const { id } = req.params;
+    const toVerify = await verifyUser(req);
 
-//     if (findUser.length === 0) {
-//         return res.status(401).json({ message: 'Unauthorized user' });
-//     }
+    const findByUser = await BlogPost.findAll({
+        where: { id, userId: toVerify },
+    });
 
-//     const toUpdate = await BlogPost.update({ title, content }, { where: { id } });
-//     return res.status(200).json(toUpdate);
-// };
+    const postExist = await BlogPost.findOne({ where: { id } });
+    
+    if (!postExist) {
+        return res.status(404).json({ message: 'Post does not exist' });
+    }    
 
+    if (findByUser.length === 0) {
+        return res.status(401).json({ message: 'Unauthorized user' });
+    }
+     await BlogPost.destroy({ where: { id } });
+
+     return res.status(204).end();
+};
+
+const search = async (req, res) => {
+    const { q } = req.query;
+    const result = await BlogPost.findAll({
+        where: {
+          [Op.or]: [
+            { title: { [Op.like]: `%${q}%` } },
+            { content: { [Op.like]: `%${q}%` } },
+          ],
+        },
+        include: [
+          { model: User, as: 'user', attributes: { exclude: 'password' } },
+          { model: Category, as: 'categories' },
+        ],
+      });
+      return res.status(200).json(result);
+};
 module.exports = {
     newPost,
     getById,
     getAll,
-    // editPost,
+    editPost,
+    deletePost,
+    search,
 };

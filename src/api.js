@@ -20,7 +20,10 @@ app.get('/categories', validate, category.getAll);
 app.get('/post', validate, post.getAll);
 app.get('/post/:id', validate, post.getById);
 app.post('/post', validate, post.newPost);
-// app.put('/post/:id', validate, post.editPost);
+app.put('/post/:id', validate, post.editPost);
+app.delete('/post/:id', validate, post.deletePost);
+app.delete('/user/me', validate, user.deleteMe);
+app.get('/post/search', validate, post.search);
 
 // ...
 
