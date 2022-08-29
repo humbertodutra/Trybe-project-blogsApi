@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { BlogPost, Category, User, PostCategory } = require('../database/models');
 const { Op } = require('sequelize');
+const { BlogPost, Category, User, PostCategory } = require('../database/models');
 
 const verifyCategory = async (c) => {
     const findCategories = await Category.findAll({
